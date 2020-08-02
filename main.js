@@ -1,5 +1,5 @@
 // Modules
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, TouchBar } = require('electron')
 const windowStateKeeper = require('electron-window-state')
 const readItem = require('./readItem')
 const updater = require('./updater')
@@ -8,6 +8,59 @@ const updater = require('./updater')
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
+const tbLabel = new TouchBar.TouchBarLabel({
+  label: 'Theme:'
+})
+
+// Touch Bar Slider
+const tbSlider = new TouchBar.TouchBarSlider({
+  label: 'Size',
+  minValue: 500,
+  maxValue: 1000,
+  value: 500,
+  change: val => {
+    mainWindow.setSize(val,val,true)
+  }
+})
+
+// Touch Bar Button
+const tbButton = new TouchBar.TouchBarButton({
+  label: 'DevTools',
+  icon: `${__dirname}/file-code-solid@2x.png`,
+  iconPosition: 'left',
+  click: () => {
+    mainWindow.webContents.openDevTools()
+  }
+})
+
+// Touch Bar Popover
+const tbPopover = new TouchBar.TouchBarPopover({
+  label: 'Size',
+  items: new TouchBar({ items: [tbSlider] })
+})
+
+// Touch Bar Spacer
+const tbSpacer = new TouchBar.TouchBarSpacer({
+  size: 'flexible'
+})
+
+// Touch Bar Color Picker
+const tbPicker = new TouchBar.TouchBarColorPicker({
+  change: color => {
+    mainWindow.webContents.insertCSS(`body{background-color:${color};}`)
+  }
+})
+
+// Mac Touch Bar
+const touchBar = new TouchBar({
+  items: [
+    tbLabel,
+    tbPicker,
+    tbPopover,
+    tbSpacer,
+    tbButton
+  ]
+})
 // Listen for new item request
 ipcMain.on('new-item', (e, itemUrl) => {
 
@@ -38,6 +91,9 @@ function createWindow() {
 
   // Load index.html into the new BrowserWindow
   mainWindow.loadFile('renderer/main.html')
+
+  // Set touch bar on Mac
+  if (process.platform === 'darwin') mainWindow.setTouchBar(touchBar)
 
   // Manage new window state
   state.manage(mainWindow)
